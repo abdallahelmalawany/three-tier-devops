@@ -106,7 +106,7 @@ jobs:
 
       - name: Configure AWS credentials
         if: env.IS_DEPLOY == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ env.AWS_REGION }}
           # OIDC when the role variable is set; static sandbox keys otherwise.
@@ -145,7 +145,7 @@ jobs:
         service: [backend, frontend]
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
