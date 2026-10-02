@@ -1,0 +1,14 @@
+body { font-family: system-ui, sans-serif; margin: 0; background: #f6f7f9; color: #1d2330; }
+main { max-width: 640px; margin: 3rem auto; padding: 0 1rem; }
+h1 { margin-bottom: .25rem; }
+.muted { color: #5b6475; margin-top: 0; }
+.status { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: .75rem 1rem; background: #fff; border: 1px solid #dde1e7; border-radius: 8px; }
+.ok { color: #1a7f37; }
+.bad { color: #cf222e; }
+form { display: flex; gap: .5rem; margin: 1.5rem 0 .5rem; }
+input { flex: 1; padding: .6rem; border: 1px solid #c4cad3; border-radius: 6px; font: inherit; }
+button { padding: .6rem 1.2rem; border: 0; border-radius: 6px; background: #1f6feb; color: #fff; font: inherit; cursor: pointer; }
+.error { color: #cf222e; }
+ul { list-style: none; padding: 0; }
+li { background: #fff; border: 1px solid #dde1e7; border-radius: 6px; padding: .6rem .8rem; margin-bottom: .5rem; }
+li time { display: block; color: #5b6475; font-size: .8rem; }

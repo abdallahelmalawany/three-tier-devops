@@ -1,0 +1,7 @@
+# Copy to backend.hcl (git-ignored) and fill in the bucket created by
+# infra/bootstrap, then run: terraform init -backend-config=backend.hcl
+bucket       = "threetier-tfstate-123456789012-us-east-1"
+key          = "envs/dev/terraform.tfstate"
+region       = "us-east-1"
+encrypt      = true
+use_lockfile = true # S3-native state locking (no DynamoDB table needed)

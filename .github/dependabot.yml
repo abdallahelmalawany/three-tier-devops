@@ -1,0 +1,15 @@
+# Keeps dependencies, base images, actions and providers patched.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /app/backend
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directories: [/app/backend, /app/frontend]
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: terraform
+    directories: [/infra/envs/dev, /infra/bootstrap]
+    schedule: { interval: weekly }

@@ -1,0 +1,22 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+backend.hcl
+*.auto.tfvars
+override.tf
+override.tf.json
+
+# Local env / editor
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,198 @@
+# Application pipeline: Build -> Test -> Build & scan images -> Push -> Deploy
+#
+# Pull requests run build/test/image build+scan only (no AWS access).
+# Pushes to main additionally push images to ECR and roll out ECS.
+#
+# Configuration (Settings > Secrets and variables > Actions) - nothing is
+# hard-coded in the repository:
+#   vars.AWS_REGION            e.g. us-east-1
+#   vars.NAME_PREFIX           e.g. threetier-dev  (terraform output github_actions_variables)
+#   vars.AWS_DEPLOY_ROLE_ARN   OIDC role created by Terraform (preferred)
+#   vars.APP_URL               optional, enables the post-deploy smoke test
+#   secrets.AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN
+#                              fallback for sandboxes where OIDC is not allowed
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/ci-cd.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - ".github/workflows/ci-cd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  # Never cancel a deployment half-way; superseded PR runs can be cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  NAME_PREFIX: ${{ vars.NAME_PREFIX || 'threetier-dev' }}
+  IMAGE_TAG: ${{ github.sha }}
+  # Deploy stages run on main once the AWS variables are configured; before
+  # that (fresh fork, no environment yet) the pipeline still builds, tests and scans.
+  IS_DEPLOY: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.NAME_PREFIX != '' }}
+
+jobs:
+  build-test:
+    name: Build & test backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check syntax
+        run: node --check src/server.js && node --check src/app.js
+
+      - name: Run tests
+        run: npm test
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  image:
+    name: Image (${{ matrix.service }})
+    needs: build-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC token for AWS (only used on main)
+    strategy:
+      fail-fast: true
+      matrix:
+        service: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: app/${{ matrix.service }}
+          target: ${{ matrix.service == 'backend' && 'runtime' || '' }}
+          build-args: APP_VERSION=${{ env.IMAGE_TAG }}
+          tags: ${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          load: true
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Configure AWS credentials
+        if: env.IS_DEPLOY == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          # OIDC when the role variable is set; static sandbox keys otherwise.
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-access-key-id: ${{ vars.AWS_DEPLOY_ROLE_ARN == '' && secrets.AWS_ACCESS_KEY_ID || '' }}
+          aws-secret-access-key: ${{ vars.AWS_DEPLOY_ROLE_ARN == '' && secrets.AWS_SECRET_ACCESS_KEY || '' }}
+          aws-session-token: ${{ vars.AWS_DEPLOY_ROLE_ARN == '' && secrets.AWS_SESSION_TOKEN || '' }}
+
+      - name: Log in to Amazon ECR
+        if: env.IS_DEPLOY == 'true'
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push image to ECR
+        if: env.IS_DEPLOY == 'true'
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ env.NAME_PREFIX }}/${{ matrix.service }}:${{ env.IMAGE_TAG }}
+        run: |
+          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "$IMAGE"
+          docker push "$IMAGE"
+          echo "Pushed $IMAGE" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy (${{ matrix.service }})
+    needs: image
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.NAME_PREFIX != ''
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: ${{ vars.APP_URL }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      matrix:
+        service: [backend, frontend]
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-access-key-id: ${{ vars.AWS_DEPLOY_ROLE_ARN == '' && secrets.AWS_ACCESS_KEY_ID || '' }}
+          aws-secret-access-key: ${{ vars.AWS_DEPLOY_ROLE_ARN == '' && secrets.AWS_SECRET_ACCESS_KEY || '' }}
+          aws-session-token: ${{ vars.AWS_DEPLOY_ROLE_ARN == '' && secrets.AWS_SESSION_TOKEN || '' }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Start from the task definition Terraform registered, so env vars,
+      # secrets, roles and sizing stay owned by Terraform; only the image changes.
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "${NAME_PREFIX}-${{ matrix.service }}" \
+            --query taskDefinition > task-definition.json
+
+      - name: Render task definition with new image
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ matrix.service }}
+          image: ${{ steps.ecr.outputs.registry }}/${{ env.NAME_PREFIX }}/${{ matrix.service }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy to ECS and wait for stability
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          cluster: ${{ env.NAME_PREFIX }}-cluster
+          service: ${{ env.NAME_PREFIX }}-${{ matrix.service }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
+
+  smoke-test:
+    name: Smoke test
+    needs: deploy
+    if: vars.APP_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check frontend and API through the load balancer
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors "$APP_URL/healthz"
+          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors "$APP_URL/api/health" | tee health.json
+          grep -q "\"version\":\"${GITHUB_SHA}\"" health.json || { echo "Deployed version does not match ${GITHUB_SHA}"; exit 1; }
+          curl -fsS "$APP_URL/api/ready"
