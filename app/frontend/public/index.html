@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Three-Tier Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>Three-Tier Demo</h1>
+    <p class="muted">Static frontend → API on ECS Fargate → PostgreSQL on RDS</p>
+
+    <section class="status">
+      <span>API: <strong id="api-status">checking…</strong></span>
+      <span>Database: <strong id="db-status">checking…</strong></span>
+      <span>Version: <code id="version">–</code></span>
+    </section>
+
+    <form id="message-form">
+      <input id="message-text" maxlength="280" placeholder="Write a message" required>
+      <button type="submit">Send</button>
+    </form>
+    <p id="error" class="error" hidden></p>
+
+    <ul id="messages"></ul>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "three-tier-backend",
+  "version": "1.0.0",
+  "description": "Minimal messages API used to demonstrate the infrastructure and delivery pipeline",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.0"
+  }
+}
