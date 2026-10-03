@@ -329,7 +329,7 @@ Screenshots are stored in [`docs/screenshots/`](docs/screenshots/):
 | 5 | CloudWatch dashboard | `05-dashboard.png` |
 | 6 | CloudWatch alarms list (and an alarm in ALARM state if triggered) | `06-alarms.png` |
 | 7 | Backend JSON logs in CloudWatch Logs Insights | `07-logs.png` |
-| 8 | `terraform destroy` completed | `08-destroy.png` |
+| 8 | `terraform destroy`: not captured. The KodeKloud session was ended instead, which deletes the whole sandbox account | — |
 | 1b | `terraform apply` refreshing the deployed resources (VPC, subnets, security groups, …) | `01b-terraform-refresh.png` |
 | 7b | CloudWatch log groups: ECS, RDS PostgreSQL export, Container Insights | `07b-log-groups.png` |
 | 4b | Backend deployment: timeline, circuit breaker with 0 failed tasks | `04b-ecs-backend-deployment.png` |
