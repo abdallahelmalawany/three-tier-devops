@@ -13,4 +13,8 @@ enable_nat_gateway = false
 db_instance_class  = "db.t3.micro"
 db_multi_az        = false
 
+# KodeKloud playgrounds block creating an IAM OIDC provider: CI uses the
+# playground access keys stored as GitHub secrets instead.
+enable_github_oidc = false
+
 # alert_email = "you@example.com"
