@@ -136,6 +136,12 @@ variable "db_multi_az" {
 }
 
 # --- Observability -----------------------------------------------------------
+variable "db_password_version" {
+  description = "Bump to generate a new DB password and write it to RDS and SSM in the same run."
+  type        = number
+  default     = 1
+}
+
 variable "db_create_parameter_group" {
   description = "Create a custom RDS parameter group. Set false where rds:CreateDBParameterGroup is denied (sandboxes)."
   type        = bool

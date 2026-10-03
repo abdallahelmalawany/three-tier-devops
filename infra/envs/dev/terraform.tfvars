@@ -24,6 +24,10 @@ log_retention_days        = 0     # logs:PutRetentionPolicy
 enable_autoscaling        = false # application-autoscaling:TagResource
 enable_log_metric_alarm   = false # logs:PutMetricFilter
 tag_iam_policies          = false # iam:TagPolicy
-enable_flow_logs          = false # ec2:CreateFlowLogs
+
+# Bumped once: a partially failed first apply created SSM and RDS in
+# different runs, each with its own generated password.
+db_password_version = 2
+enable_flow_logs    = false # ec2:CreateFlowLogs
 
 # alert_email = "you@example.com"

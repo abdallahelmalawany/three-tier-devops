@@ -37,6 +37,7 @@ module "database" {
   instance_class         = var.db_instance_class
   multi_az               = var.db_multi_az
   create_parameter_group = var.db_create_parameter_group
+  password_version       = var.db_password_version
   deletion_protection    = var.environment == "prod"
   skip_final_snapshot    = var.environment != "prod"
 }
