@@ -330,6 +330,13 @@ Screenshots are stored in [`docs/screenshots/`](docs/screenshots/):
 | 6 | CloudWatch alarms list (and an alarm in ALARM state if triggered) | `06-alarms.png` |
 | 7 | Backend JSON logs in CloudWatch Logs Insights | `07-logs.png` |
 | 8 | `terraform destroy` completed | `08-destroy.png` |
+| 1b | `terraform apply` refreshing the deployed resources (VPC, subnets, security groups, …) | `01b-terraform-refresh.png` |
+| 7b | CloudWatch log groups: ECS, RDS PostgreSQL export, Container Insights | `07b-log-groups.png` |
+| 4b | Backend deployment: timeline, circuit breaker with 0 failed tasks | `04b-ecs-backend-deployment.png` |
+| 9 | ECR repositories: immutable tags, AES-256 encryption | `09-ecr-repositories.png` |
+| 10 | Pipeline job summary: image pushed to ECR, tagged with the commit SHA | `10-image-pushed.png` |
+| 11 | Terraform workflow: fmt, validate and Checkov scan passing | `11-infra-pipeline.png` |
+| — | First pipeline run: the backend deploy step timed out because a manual redeploy (DB password rotation) overlapped its wait; the deployment itself succeeded | `02-pipeline-first-run.png` |
 
 ## 13. Clean-up
 
