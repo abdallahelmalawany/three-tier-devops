@@ -336,7 +336,6 @@ Screenshots are stored in [`docs/screenshots/`](docs/screenshots/):
 | 9 | ECR repositories: immutable tags, AES-256 encryption | `09-ecr-repositories.png` |
 | 10 | Pipeline job summary: image pushed to ECR, tagged with the commit SHA | `10-image-pushed.png` |
 | 11 | Terraform workflow: fmt, validate and Checkov scan passing | `11-infra-pipeline.png` |
-| — | First pipeline run: the backend deploy step timed out because a manual redeploy (DB password rotation) overlapped its wait; the deployment itself succeeded | `02-pipeline-first-run.png` |
 
 ## 13. Clean-up
 
