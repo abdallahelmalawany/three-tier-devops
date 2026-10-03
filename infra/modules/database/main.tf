@@ -21,7 +21,12 @@ resource "aws_db_subnet_group" "this" {
   subnet_ids  = var.subnet_ids
 }
 
+# Optional: some sandboxes deny rds:CreateDBParameterGroup. Without it the
+# instance uses the AWS default group, which on PostgreSQL 15+ already sets
+# rds.force_ssl = 1 (only the extra query/connection logging is lost).
 resource "aws_db_parameter_group" "this" {
+  count = var.create_parameter_group ? 1 : 0
+
   name        = "${var.name_prefix}-postgres${var.engine_major_version}"
   family      = "postgres${var.engine_major_version}"
   description = "Hardened parameters for ${var.name_prefix}"
@@ -67,7 +72,7 @@ resource "aws_db_instance" "this" {
   vpc_security_group_ids = [var.security_group_id]
   publicly_accessible    = false
   multi_az               = var.multi_az
-  parameter_group_name   = aws_db_parameter_group.this.name
+  parameter_group_name   = var.create_parameter_group ? aws_db_parameter_group.this[0].name : null
 
   backup_retention_period         = var.backup_retention_days
   copy_tags_to_snapshot           = true

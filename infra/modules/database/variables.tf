@@ -90,3 +90,9 @@ variable "skip_final_snapshot" {
   type        = bool
   default     = true
 }
+
+variable "create_parameter_group" {
+  description = "Create the hardened parameter group (forced TLS, slow-query and connection logging). False uses the AWS default group."
+  type        = bool
+  default     = true
+}

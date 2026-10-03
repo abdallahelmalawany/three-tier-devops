@@ -118,10 +118,19 @@ data "aws_iam_policy_document" "execution" {
   }
 }
 
-resource "aws_iam_role_policy" "execution" {
-  name   = "ecs-execution"
-  role   = aws_iam_role.execution.id
-  policy = data.aws_iam_policy_document.execution.json
+# A customer-managed policy (not inline) so it also works in accounts that only
+# allow iam:CreatePolicy + iam:AttachRolePolicy, such as KodeKloud playgrounds.
+resource "aws_iam_policy" "execution" {
+  provider = aws.iam_policy
+
+  name        = "${var.name_prefix}-ecs-execution"
+  description = "ECS agent: pull ${var.name_prefix} images, write its logs, read the DB password"
+  policy      = data.aws_iam_policy_document.execution.json
+}
+
+resource "aws_iam_role_policy_attachment" "execution" {
+  role       = aws_iam_role.execution.name
+  policy_arn = aws_iam_policy.execution.arn
 }
 
 # The application itself calls no AWS APIs, so its task role has no
@@ -248,13 +257,17 @@ resource "aws_ecs_task_definition" "service" {
     image     = "${var.repository_urls[each.key]}:${var.image_tag}"
     essential = true
 
-    portMappings = [{ containerPort = each.value.port, protocol = "tcp" }]
+    # hostPort, add, systemControls and volumesFrom repeat the values ECS fills
+    # in itself; without them every plan shows a spurious replacement.
+    portMappings = [{ containerPort = each.value.port, hostPort = each.value.port, protocol = "tcp" }]
 
     environment = each.value.environment
     secrets     = each.value.secrets
 
     readonlyRootFilesystem = true
-    linuxParameters        = { capabilities = { drop = ["ALL"] } }
+    linuxParameters        = { capabilities = { add = [], drop = ["ALL"] } }
+    systemControls         = []
+    volumesFrom            = []
     mountPoints = each.value.needs_tmp_volume ? [
       { sourceVolume = "tmp", containerPath = "/tmp", readOnly = false }
     ] : []
@@ -316,7 +329,11 @@ resource "aws_ecs_service" "service" {
 # ---------------------------------------------------------------------------
 # Auto scaling (backend): target-tracking on average CPU
 # ---------------------------------------------------------------------------
+# Optional: some sandboxes deny application-autoscaling:TagResource, which the
+# provider needs because default_tags applies to the scalable target.
 resource "aws_appautoscaling_target" "backend" {
+  count = var.enable_autoscaling ? 1 : 0
+
   service_namespace  = "ecs"
   resource_id        = "service/${aws_ecs_cluster.this.name}/${aws_ecs_service.service["backend"].name}"
   scalable_dimension = "ecs:service:DesiredCount"
@@ -325,11 +342,13 @@ resource "aws_appautoscaling_target" "backend" {
 }
 
 resource "aws_appautoscaling_policy" "backend_cpu" {
+  count = var.enable_autoscaling ? 1 : 0
+
   name               = "${var.name_prefix}-backend-cpu-target"
   policy_type        = "TargetTrackingScaling"
-  service_namespace  = aws_appautoscaling_target.backend.service_namespace
-  resource_id        = aws_appautoscaling_target.backend.resource_id
-  scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.backend[0].service_namespace
+  resource_id        = aws_appautoscaling_target.backend[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.backend[0].scalable_dimension
 
   target_tracking_scaling_policy_configuration {
     target_value       = 60

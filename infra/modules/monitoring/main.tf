@@ -24,7 +24,10 @@ locals {
 # Log-based alarm: any "level":"error" line written by the backend.
 # The API logs JSON, so the metric filter matches on a field, not on text.
 # ---------------------------------------------------------------------------
+# Optional: some sandboxes deny logs:PutMetricFilter.
 resource "aws_cloudwatch_log_metric_filter" "backend_errors" {
+  count = var.enable_log_metric_alarm ? 1 : 0
+
   name           = "${var.name_prefix}-backend-errors"
   log_group_name = var.backend_log_group_name
   pattern        = "{ $.level = \"error\" }"
@@ -38,10 +41,12 @@ resource "aws_cloudwatch_log_metric_filter" "backend_errors" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "backend_error_logs" {
+  count = var.enable_log_metric_alarm ? 1 : 0
+
   alarm_name          = "${var.name_prefix}-backend-error-logs"
   alarm_description   = "Backend logged errors in the last 5 minutes. Check the /ecs/${var.name_prefix}/backend log group."
   namespace           = local.metric_ns
-  metric_name         = aws_cloudwatch_log_metric_filter.backend_errors.metric_transformation[0].name
+  metric_name         = aws_cloudwatch_log_metric_filter.backend_errors[0].metric_transformation[0].name
   statistic           = "Sum"
   period              = 300
   evaluation_periods  = 1
@@ -214,12 +219,11 @@ resource "aws_cloudwatch_dashboard" "this" {
           region = var.aws_region
           stat   = "Average"
           period = 60
-          metrics = flatten([
-            for name, svc in var.ecs_service_names : [
-              ["AWS/ECS", "CPUUtilization", "ClusterName", var.ecs_cluster_name, "ServiceName", svc, { label = "${name} CPU" }],
-              ["AWS/ECS", "MemoryUtilization", "ClusterName", var.ecs_cluster_name, "ServiceName", svc, { label = "${name} memory" }],
-            ]
-          ])
+          # concat, not flatten: flatten is recursive and would also flatten each metric row
+          metrics = concat(
+            [for name, svc in var.ecs_service_names : ["AWS/ECS", "CPUUtilization", "ClusterName", var.ecs_cluster_name, "ServiceName", svc, { label = "${name} CPU" }]],
+            [for name, svc in var.ecs_service_names : ["AWS/ECS", "MemoryUtilization", "ClusterName", var.ecs_cluster_name, "ServiceName", svc, { label = "${name} memory" }]],
+          )
         }
       },
       {

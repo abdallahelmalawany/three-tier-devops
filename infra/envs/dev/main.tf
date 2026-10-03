@@ -31,17 +31,22 @@ module "ecr" {
 module "database" {
   source = "../../modules/database"
 
-  name_prefix         = local.name_prefix
-  subnet_ids          = module.network.data_subnet_ids
-  security_group_id   = module.security.database_security_group_id
-  instance_class      = var.db_instance_class
-  multi_az            = var.db_multi_az
-  deletion_protection = var.environment == "prod"
-  skip_final_snapshot = var.environment != "prod"
+  name_prefix            = local.name_prefix
+  subnet_ids             = module.network.data_subnet_ids
+  security_group_id      = module.security.database_security_group_id
+  instance_class         = var.db_instance_class
+  multi_az               = var.db_multi_az
+  create_parameter_group = var.db_create_parameter_group
+  deletion_protection    = var.environment == "prod"
+  skip_final_snapshot    = var.environment != "prod"
 }
 
 module "ecs" {
   source = "../../modules/ecs"
+  providers = {
+    aws            = aws
+    aws.iam_policy = aws.iam_policy
+  }
 
   name_prefix         = local.name_prefix
   aws_region          = var.aws_region
@@ -83,6 +88,7 @@ module "ecs" {
   }
 
   enable_container_insights = var.enable_container_insights
+  enable_autoscaling        = var.enable_autoscaling
   log_retention_days        = var.log_retention_days
 }
 
@@ -98,6 +104,7 @@ module "monitoring" {
   ecs_service_names         = module.ecs.service_names
   backend_log_group_name    = module.ecs.log_group_names["backend"]
   db_instance_identifier    = module.database.instance_identifier
+  enable_log_metric_alarm   = var.enable_log_metric_alarm
 }
 
 module "github_oidc" {

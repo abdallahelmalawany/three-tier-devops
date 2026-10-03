@@ -180,12 +180,18 @@ data "aws_iam_policy_document" "flow_logs" {
   }
 }
 
-resource "aws_iam_role_policy" "flow_logs" {
+resource "aws_iam_policy" "flow_logs" {
   count = var.enable_flow_logs ? 1 : 0
 
-  name   = "write-flow-logs"
-  role   = aws_iam_role.flow_logs[0].id
+  name   = "${var.name_prefix}-vpc-flow-logs"
   policy = data.aws_iam_policy_document.flow_logs[0].json
+}
+
+resource "aws_iam_role_policy_attachment" "flow_logs" {
+  count = var.enable_flow_logs ? 1 : 0
+
+  role       = aws_iam_role.flow_logs[0].name
+  policy_arn = aws_iam_policy.flow_logs[0].arn
 }
 
 resource "aws_flow_log" "this" {

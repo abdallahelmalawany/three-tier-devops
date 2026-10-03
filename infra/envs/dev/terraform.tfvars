@@ -17,4 +17,13 @@ db_multi_az        = false
 # playground access keys stored as GitHub secrets instead.
 enable_github_oidc = false
 
+# The playground also denies these actions; each switch skips the
+# resource that needs it.
+db_create_parameter_group = false # rds:CreateDBParameterGroup
+log_retention_days        = 0     # logs:PutRetentionPolicy
+enable_autoscaling        = false # application-autoscaling:TagResource
+enable_log_metric_alarm   = false # logs:PutMetricFilter
+tag_iam_policies          = false # iam:TagPolicy
+enable_flow_logs          = false # ec2:CreateFlowLogs
+
 # alert_email = "you@example.com"

@@ -105,6 +105,24 @@ variable "enable_container_insights" {
 }
 
 # --- Database ----------------------------------------------------------------
+variable "tag_iam_policies" {
+  description = "Apply the standard tags to IAM policies. Set false where iam:TagPolicy is denied (sandboxes)."
+  type        = bool
+  default     = true
+}
+
+variable "enable_autoscaling" {
+  description = "Backend CPU auto scaling. Set false where application-autoscaling:TagResource is denied (sandboxes)."
+  type        = bool
+  default     = true
+}
+
+variable "enable_log_metric_alarm" {
+  description = "Log-based error alarm. Set false where logs:PutMetricFilter is denied (sandboxes)."
+  type        = bool
+  default     = true
+}
+
 variable "db_instance_class" {
   description = "RDS instance class."
   type        = string
@@ -118,8 +136,14 @@ variable "db_multi_az" {
 }
 
 # --- Observability -----------------------------------------------------------
+variable "db_create_parameter_group" {
+  description = "Create a custom RDS parameter group. Set false where rds:CreateDBParameterGroup is denied (sandboxes)."
+  type        = bool
+  default     = true
+}
+
 variable "log_retention_days" {
-  description = "CloudWatch Logs retention."
+  description = "CloudWatch Logs retention in days. 0 = never expire (skips logs:PutRetentionPolicy, which some sandboxes deny)."
   type        = number
   default     = 14
 }

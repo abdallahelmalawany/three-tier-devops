@@ -107,3 +107,9 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "enable_autoscaling" {
+  description = "CPU target-tracking auto scaling for the backend service."
+  type        = bool
+  default     = true
+}

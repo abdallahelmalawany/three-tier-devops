@@ -79,3 +79,9 @@ variable "db_free_storage_threshold_gib" {
   type        = number
   default     = 2
 }
+
+variable "enable_log_metric_alarm" {
+  description = "Log metric filter on backend error lines plus its alarm."
+  type        = bool
+  default     = true
+}

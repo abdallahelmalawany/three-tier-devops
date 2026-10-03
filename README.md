@@ -290,6 +290,18 @@ This project was deployed to a **KodeKloud AWS playground**, a temporary sandbox
 - The account is **short-lived** (the session expires and all resources are wiped), so the deployment was captured with screenshots (§12) and does not remain running.
 - Playgrounds allow only some services, regions and instance sizes. Defaults were chosen to fit: `us-east-1`, `db.t3.micro`, Fargate 0.25 vCPU / 0.5 GB, no NAT gateway, no CloudFront, no Secrets Manager.
 - If the playground doesn't allow creating an IAM OIDC provider, set `enable_github_oidc = false` and use the playground's temporary keys as GitHub secrets (see §4). If Container Insights or flow logs are blocked, set `enable_container_insights = false` / `enable_flow_logs = false`.
+- Some playgrounds deny more actions. Each switch below skips only the resource that needs the denied action, and the defaults keep the full setup. `infra/envs/dev/terraform.tfvars` sets all of them for the KodeKloud AWS playground:
+
+  | Denied action | Switch | Effect |
+  |---|---|---|
+  | `rds:CreateDBParameterGroup` | `db_create_parameter_group = false` | AWS default group; PostgreSQL 16 still forces TLS, but there's no slow-query or connection logging |
+  | `logs:PutRetentionPolicy` | `log_retention_days = 0` | Log groups never expire |
+  | `application-autoscaling:TagResource` | `enable_autoscaling = false` | Backend runs at a fixed task count |
+  | `logs:PutMetricFilter` | `enable_log_metric_alarm = false` | No log-based error alarm (the metric alarms remain) |
+  | `iam:TagPolicy` | `tag_iam_policies = false` | The IAM policies are created untagged |
+  | `ec2:CreateFlowLogs` | `enable_flow_logs = false` | No VPC flow logs |
+
+- IAM policies are customer-managed and attached to roles, not inline, because playgrounds allow `iam:AttachRolePolicy` but not `iam:PutRolePolicy`. The playground doesn't allow `iam:DeletePolicy` or `logs:DeleteLogGroup`, so `terraform destroy` can leave those behind. They disappear when the session ends.
 - ECR repositories and the state bucket use `force_delete` / `force_destroy` in `dev`, so `terraform destroy` cleans up completely before the session ends.
 
 **Approximate cost** if run in a normal account (us-east-1, 24/7): ALB ~$17, 2 Fargate tasks ~$18, RDS `db.t3.micro` + 20 GB ~$15, public IPv4 addresses (ALB + tasks) ~$15, CloudWatch ~$5. Total **≈ $70/month**, or about **$0.10/hour**. A 2-hour sandbox demo costs a few cents.
